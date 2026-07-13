@@ -54,7 +54,7 @@ async function submitReport() {
 
   toast('Submitting report...');
   try {
-    const res = await fetch('/api/reports/create', {
+    const res = await fetch('api.php?action=create-report', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: Store.user.email, type, subject, description: desc })
@@ -84,7 +84,7 @@ async function deleteMyReport(id) {
   if (confirm('Are you sure you want to cancel this report?')) {
     toast('Cancelling report...');
     try {
-      const res = await fetch('/api/reports/delete', {
+      const res = await fetch('api.php?action=delete-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id })

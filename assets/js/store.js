@@ -68,7 +68,7 @@ const Store = {
 
   async fetchUserData(email) {
     try {
-      const res = await fetch(`/api/user?email=${encodeURIComponent(email)}`);
+      const res = await fetch(`api.php?action=user&email=${encodeURIComponent(email)}`);
       if (res.ok) {
         const data = await res.json();
         this.user = data.user;
@@ -85,7 +85,7 @@ const Store = {
 
   async fetchAdminData() {
     try {
-      const res = await fetch('/api/admin/data');
+      const res = await fetch('api.php?action=admin-data');
       if (res.ok) {
         const data = await res.json();
         this.adminUsers = data.users;

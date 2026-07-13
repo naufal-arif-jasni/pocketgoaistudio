@@ -177,7 +177,7 @@ async function saveUser(action, id) {
 
   toast('Saving user...');
   try {
-    const res = await fetch('/api/admin/user/save', {
+    const res = await fetch('api.php?action=admin-save-user', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, id, name, email, phone, child, balance, status })
@@ -199,7 +199,7 @@ async function deleteUser(id) {
   if (confirm('Are you sure you want to delete this user?')) {
     toast('Deleting user...');
     try {
-      const res = await fetch('/api/admin/user/delete', {
+      const res = await fetch('api.php?action=admin-delete-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id })
@@ -229,7 +229,7 @@ async function saveTransaction(action, id) {
 
   toast('Saving transaction...');
   try {
-    const res = await fetch('/api/admin/transaction/save', {
+    const res = await fetch('api.php?action=admin-save-transaction', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, id, userId, description: desc, amount, type, date })
@@ -251,7 +251,7 @@ async function deleteTransaction(id) {
   if (confirm('Are you sure you want to delete this transaction?')) {
     toast('Deleting transaction...');
     try {
-      const res = await fetch('/api/admin/transaction/delete', {
+      const res = await fetch('api.php?action=admin-delete-transaction', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id })

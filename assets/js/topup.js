@@ -124,7 +124,7 @@ async function finaliseTopUp() {
 async function processTopUp(methodStr) {
   toast('Processing top up...');
   try {
-    const res = await fetch('/api/topup', {
+    const res = await fetch('api.php?action=topup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: Store.user.email, amount: amt, method: methodStr })
@@ -143,7 +143,7 @@ async function processTopUp(methodStr) {
       
       Store.lastReceipt = receipt;
       Store.save();
-      location.href = 'success.html';
+      location.href = 'success.php';
     } else {
       toast('Top Up failed on server.');
     }

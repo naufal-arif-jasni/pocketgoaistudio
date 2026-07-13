@@ -52,7 +52,7 @@ async function saveLimit() {
   
   toast('Updating daily limit...');
   try {
-    const res = await fetch('/api/user/update-limit', {
+    const res = await fetch('api.php?action=update-limit', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: Store.user.email, limit: pendingLimit })

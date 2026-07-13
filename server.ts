@@ -61,6 +61,298 @@ function renderPhpAsHtml(filePath: string): string {
 
 // ── API ROUTES ──
 
+// Intercept api.php calls to simulate real PHP backend logic in AI Studio
+app.all('/api.php', (req, res) => {
+  const action = req.query.action as string;
+  const db = getDB();
+
+  if (action === 'login') {
+    const { email, password, role } = req.body;
+    if (!email || !password) return res.status(400).json({ error: 'Missing credentials' });
+    if (role === 'admin') {
+      if (email === 'Admin1' && password === '12345') {
+        return res.json({ success: true, role: 'admin' });
+      }
+      return res.status(401).json({ error: 'Invalid admin credentials' });
+    } else {
+      const user = db.users.find((u: any) => u.email.toLowerCase() === email.toLowerCase() && u.password === password && u.role === 'parent');
+      if (user) {
+        return res.json({ success: true, user });
+      }
+      return res.status(401).json({ error: 'Invalid parent credentials' });
+    }
+  }
+
+  if (action === 'register') {
+    const { name, ic, email, phone, password, child, childClass, studentId } = req.body;
+    if (!name || !email || !password || !child) {
+      return res.status(400).json({ error: 'Missing required registration fields' });
+    }
+    const existing = db.users.find((u: any) => u.email.toLowerCase() === email.toLowerCase());
+    if (existing) {
+      return res.status(400).json({ error: 'Email address already registered' });
+    }
+    const newUser = {
+      id: db.adminNextId++,
+      name,
+      ic: ic || '',
+      email,
+      phone: phone || '',
+      child,
+      childClass: childClass || '4 Amanah',
+      studentId: studentId || 'PG-' + Math.floor(10000 + Math.random() * 90000),
+      balance: 0,
+      daily_limit: 50,
+      status: 'active',
+      password,
+      role: 'parent' as const,
+      topupTotal: 0,
+      topupCount: 0
+    };
+    db.users.push(newUser);
+    saveDB(db);
+    return res.json({ success: true, user: newUser });
+  }
+
+  if (action === 'user') {
+    const email = req.query.email as string;
+    if (!email) {
+      return res.status(400).json({ error: 'Email parameter required' });
+    }
+    const user = db.users.find((u: any) => u.email.toLowerCase() === email.toLowerCase());
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const userTransactions = db.transactions.filter((t: any) => t.userId === user.id);
+    const userReports = db.reports.filter((r: any) => r.reporterName === user.name);
+    return res.json({
+      success: true,
+      user,
+      transactions: userTransactions,
+      reports: userReports
+    });
+  }
+
+  if (action === 'update-limit') {
+    const { email, limit } = req.body;
+    const user = db.users.find((u: any) => u.email.toLowerCase() === email.toLowerCase());
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    user.daily_limit = parseFloat(limit) || 50;
+    saveDB(db);
+    return res.json({ success: true, user });
+  }
+
+  if (action === 'topup') {
+    const { email, amount, method } = req.body;
+    const numAmount = parseFloat(amount);
+    if (!email || isNaN(numAmount) || numAmount <= 0) {
+      return res.status(400).json({ error: 'Invalid topup parameters' });
+    }
+    const user = db.users.find((u: any) => u.email.toLowerCase() === email.toLowerCase());
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    user.balance += numAmount;
+    user.topupTotal = (user.topupTotal || 0) + numAmount;
+    user.topupCount = (user.topupCount || 0) + 1;
+
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 16).replace('T', ' ');
+    const timeStr = now.toLocaleTimeString('en-MY', { hour: 'numeric', minute: '2-digit' });
+
+    const newTxn = {
+      id: db.txnNextId++,
+      userId: user.id,
+      description: `Top Up via ${method}`,
+      amount: numAmount,
+      date: dateStr,
+      type: 'topup' as const,
+      icon: '⬆️',
+      cat: 'topup',
+      title: `Top Up via ${method.split(' ')[0]}`,
+      sub: `${method.includes('Bank') ? method.substring(method.indexOf('(')+1, method.indexOf(')')) : 'Card'} · ${timeStr}`
+    };
+
+    db.transactions.push(newTxn);
+    saveDB(db);
+
+    const userTransactions = db.transactions.filter((t: any) => t.userId === user.id);
+    return res.json({ success: true, user, transactions: userTransactions });
+  }
+
+  if (action === 'create-report') {
+    const { email, type, subject, description } = req.body;
+    if (!email || !subject || !description) {
+      return res.status(400).json({ error: 'Missing report parameters' });
+    }
+    const user = db.users.find((u: any) => u.email.toLowerCase() === email.toLowerCase());
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    const now = new Date();
+    const dateStr = now.toISOString().slice(0, 16).replace('T', ' ');
+
+    const newReport = {
+      id: db.reportNextId++,
+      reporterName: user.name,
+      child: user.child,
+      type,
+      subject,
+      description,
+      status: 'Open',
+      createdAt: dateStr
+    };
+    db.reports.push(newReport);
+    saveDB(db);
+
+    const userReports = db.reports.filter((r: any) => r.reporterName === user.name);
+    return res.json({ success: true, reports: userReports });
+  }
+
+  if (action === 'delete-report') {
+    const { id } = req.body;
+    db.reports = db.reports.filter((r: any) => r.id !== parseInt(id));
+    saveDB(db);
+    return res.json({ success: true });
+  }
+
+  if (action === 'admin-data') {
+    return res.json({
+      success: true,
+      users: db.users.filter((u: any) => u.role !== 'admin'),
+      transactions: db.transactions,
+      reports: db.reports
+    });
+  }
+
+  if (action === 'admin-save-user') {
+    const { action: crudAction, id, name, email, phone, child, balance, status } = req.body;
+    if (crudAction === 'create') {
+      const newUser = {
+        id: db.adminNextId++,
+        name,
+        email,
+        phone,
+        child,
+        childClass: '4 Amanah',
+        studentId: 'PG-' + Math.floor(10000 + Math.random() * 90000),
+        balance: parseFloat(balance) || 0,
+        daily_limit: 50,
+        status,
+        password: 'password123',
+        role: 'parent' as const,
+        topupTotal: parseFloat(balance) > 0 ? parseFloat(balance) : 0,
+        topupCount: parseFloat(balance) > 0 ? 1 : 0
+      };
+      db.users.push(newUser);
+    } else {
+      const user = db.users.find((u: any) => u.id === parseInt(id));
+      if (user) {
+        user.name = name;
+        user.email = email;
+        user.phone = phone;
+        user.child = child;
+        user.balance = parseFloat(balance) || 0;
+        user.status = status;
+      }
+    }
+    saveDB(db);
+    return res.json({ success: true });
+  }
+
+  if (action === 'admin-delete-user') {
+    const { id } = req.body;
+    db.users = db.users.filter((u: any) => u.id !== parseInt(id));
+    db.transactions = db.transactions.filter((t: any) => t.userId !== parseInt(id));
+    saveDB(db);
+    return res.json({ success: true });
+  }
+
+  if (action === 'admin-save-transaction') {
+    const { action: crudAction, id, userId, description, amount, type, date } = req.body;
+    const numAmount = parseFloat(amount);
+    const txnAmount = type === 'topup' ? Math.abs(numAmount) : -Math.abs(numAmount);
+
+    if (crudAction === 'create') {
+      const newTxn = {
+        id: db.txnNextId++,
+        userId: parseInt(userId),
+        description,
+        amount: txnAmount,
+        date,
+        type,
+        icon: type === 'topup' ? '⬆️' : '🍱',
+        cat: type === 'topup' ? 'topup' : 'canteen',
+        title: description,
+        sub: date
+      };
+      db.transactions.push(newTxn);
+      const user = db.users.find((u: any) => u.id === parseInt(userId));
+      if (user) {
+        user.balance += txnAmount;
+        if (type === 'topup') {
+          user.topupTotal = (user.topupTotal || 0) + Math.abs(txnAmount);
+          user.topupCount = (user.topupCount || 0) + 1;
+        }
+      }
+    } else {
+      const txn = db.transactions.find((t: any) => t.id === parseInt(id));
+      if (txn) {
+        const oldUser = db.users.find((u: any) => u.id === txn.userId);
+        if (oldUser) {
+          oldUser.balance -= txn.amount;
+        }
+        txn.userId = parseInt(userId);
+        txn.description = description;
+        txn.amount = txnAmount;
+        txn.date = date;
+        txn.type = type;
+        const newUser = db.users.find((u: any) => u.id === parseInt(userId));
+        if (newUser) {
+          newUser.balance += txnAmount;
+        }
+      }
+    }
+    saveDB(db);
+    return res.json({ success: true });
+  }
+
+  if (action === 'admin-delete-transaction') {
+    const { id } = req.body;
+    const txn = db.transactions.find((t: any) => t.id === parseInt(id));
+    if (txn) {
+      const user = db.users.find((u: any) => u.id === txn.userId);
+      if (user) {
+        user.balance -= txn.amount;
+      }
+    }
+    db.transactions = db.transactions.filter((t: any) => t.id !== parseInt(id));
+    saveDB(db);
+    return res.json({ success: true });
+  }
+
+  if (action === 'admin-update-report-status') {
+    const { id, status } = req.body;
+    const report = db.reports.find((r: any) => r.id === parseInt(id));
+    if (report) {
+      report.status = status;
+    }
+    saveDB(db);
+    return res.json({ success: true });
+  }
+
+  if (action === 'admin-delete-report') {
+    const { id } = req.body;
+    db.reports = db.reports.filter((r: any) => r.id !== parseInt(id));
+    saveDB(db);
+    return res.json({ success: true });
+  }
+
+  return res.status(400).json({ error: 'Invalid API Action: ' + action });
+});
+
 // Health Check
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' });

@@ -28,14 +28,14 @@ function closeModal(id) {
 // Call at the top of every parent-only page.
 function requireParentAuth() {
   if (!Store.loggedIn) {
-    window.location.href = 'login.html';
+    window.location.href = 'login.php';
   }
 }
 
 // Call at the top of every admin-only page.
 function requireAdminAuth() {
   if (!Store.isAdmin) {
-    window.location.href = 'login.html';
+    window.location.href = 'login.php';
   }
 }
 

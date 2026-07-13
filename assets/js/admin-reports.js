@@ -58,7 +58,7 @@ async function saveReportStatus(id) {
   const status = document.getElementById('admin-report-status').value;
   toast('Updating report status...');
   try {
-    const res = await fetch('/api/admin/report/status', {
+    const res = await fetch('api.php?action=admin-update-report-status', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, status })
@@ -80,7 +80,7 @@ async function deleteReport(id) {
   if (confirm('Are you sure you want to delete this report?')) {
     toast('Deleting report...');
     try {
-      const res = await fetch('/api/admin/report/delete', {
+      const res = await fetch('api.php?action=admin-delete-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id })

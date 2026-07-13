@@ -28,7 +28,7 @@ async function doLogin() {
 
   toast('Logging in...');
   try {
-    const response = await fetch('/api/auth/login', {
+    const response = await fetch('api.php?action=login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email: id, password: pass, role: Store.loginRole })
