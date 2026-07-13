@@ -15,13 +15,23 @@ function updateDashboard() {
   if (avatarEl) avatarEl.textContent = (firstName.charAt(0) || 'N').toUpperCase();
   
   const childNameEl = document.getElementById('dash-child-name');
-  if (childNameEl) childNameEl.textContent = user.child || '—';
-  
   const childClassEl = document.getElementById('dash-child-class');
-  if (childClassEl) childClassEl.textContent = user.childClass || '—';
-  
   const balanceEl = document.getElementById('dash-balance');
-  if (balanceEl) balanceEl.textContent = user.balance.toFixed(2);
+  
+  const cards = user.cards || [];
+  if (cards.length > 0) {
+    const names = cards.map(c => c.student_name).join(', ');
+    const classes = cards.map(c => c.class).join(' & ');
+    const totalBalance = cards.reduce((sum, c) => sum + parseFloat(c.balance || 0), 0);
+    
+    if (childNameEl) childNameEl.textContent = names;
+    if (childClassEl) childClassEl.textContent = classes;
+    if (balanceEl) balanceEl.textContent = totalBalance.toFixed(2);
+  } else {
+    if (childNameEl) childNameEl.textContent = '—';
+    if (childClassEl) childClassEl.textContent = '—';
+    if (balanceEl) balanceEl.textContent = '0.00';
+  }
   
   const topupStatEl = document.getElementById('dash-topup-stat');
   if (topupStatEl) topupStatEl.textContent = 'RM ' + (user.topupTotal || 0).toFixed(2);
@@ -48,3 +58,16 @@ function renderRecentTxns() {
     </div>
   `).join('');
 }
+
+function goTopUp() {
+  const cards = Store.user.cards || [];
+  if (cards.length === 0) {
+    toast('⚠️ Please register a student card before performing a top-up.');
+    setTimeout(() => {
+      location.href = 'card.php';
+    }, 1200);
+    return;
+  }
+  location.href = 'topup.php';
+}
+

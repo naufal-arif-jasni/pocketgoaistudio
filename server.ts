@@ -61,6 +61,49 @@ function renderPhpAsHtml(filePath: string): string {
 
 // ── API ROUTES ──
 
+function hydrateUserNode(user: any) {
+  if (!user) return null;
+  
+  // Parse cards
+  let cards = [];
+  if (user.cards_json) {
+    try {
+      cards = typeof user.cards_json === 'string' ? JSON.parse(user.cards_json) : user.cards_json;
+    } catch (e) {
+      cards = [];
+    }
+  }
+
+  // Backwards-compatible fallback
+  if ((!cards || cards.length === 0) && (user.card_serial || user.studentId)) {
+    cards = [
+      {
+        card_serial: user.card_serial,
+        student_name: user.child,
+        student_id: user.studentId,
+        class: user.childClass,
+        balance: parseFloat(user.balance) || 0,
+        daily_limit: parseFloat(user.daily_limit) || 50,
+        status: user.status || 'active'
+      }
+    ];
+  }
+  user.cards = cards;
+
+  // Parse Visa Card
+  let visa_card = null;
+  if (user.visa_card_json) {
+    try {
+      visa_card = typeof user.visa_card_json === 'string' ? JSON.parse(user.visa_card_json) : user.visa_card_json;
+    } catch (e) {
+      visa_card = null;
+    }
+  }
+  user.visa_card = visa_card;
+
+  return user;
+}
+
 // Intercept api.php calls to simulate real PHP backend logic in AI Studio
 app.all('/api.php', (req, res) => {
   const action = req.query.action as string;
@@ -77,15 +120,15 @@ app.all('/api.php', (req, res) => {
     } else {
       const user = db.users.find((u: any) => u.email.toLowerCase() === email.toLowerCase() && u.password === password && u.role === 'parent');
       if (user) {
-        return res.json({ success: true, user });
+        return res.json({ success: true, user: hydrateUserNode(user) });
       }
       return res.status(401).json({ error: 'Invalid parent credentials' });
     }
   }
 
   if (action === 'register') {
-    const { name, ic, email, phone, password, child, childClass, studentId } = req.body;
-    if (!name || !email || !password || !child) {
+    const { name, ic, email, phone, password } = req.body;
+    if (!name || !email || !password) {
       return res.status(400).json({ error: 'Missing required registration fields' });
     }
     const existing = db.users.find((u: any) => u.email.toLowerCase() === email.toLowerCase());
@@ -98,9 +141,12 @@ app.all('/api.php', (req, res) => {
       ic: ic || '',
       email,
       phone: phone || '',
-      child,
-      childClass: childClass || '4 Amanah',
-      studentId: studentId || 'PG-' + Math.floor(10000 + Math.random() * 90000),
+      child: '',
+      childClass: '',
+      studentId: '',
+      card_serial: '',
+      cards_json: null,
+      visa_card_json: null,
       balance: 0,
       daily_limit: 50,
       status: 'active',
@@ -111,7 +157,85 @@ app.all('/api.php', (req, res) => {
     };
     db.users.push(newUser);
     saveDB(db);
-    return res.json({ success: true, user: newUser });
+    return res.json({ success: true, user: hydrateUserNode(newUser) });
+  }
+
+  if (action === 'register-card') {
+    const { email, card_serial, student_name, student_nric, class: studentClass } = req.body;
+    if (!email || !card_serial || !student_name || !student_nric || !studentClass) {
+      return res.status(400).json({ error: 'Please fill in all card details.' });
+    }
+    if (card_serial.length !== 10 || isNaN(Number(card_serial))) {
+      return res.status(400).json({ error: 'Card Serial No. must be exactly 10 digits.' });
+    }
+    const user = db.users.find((u: any) => u.email.toLowerCase() === email.toLowerCase());
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Hydrate existing cards first
+    const hydrated = hydrateUserNode(user);
+    const existingCards = hydrated.cards || [];
+
+    // Check if duplicate
+    const isDup = existingCards.some((c: any) => c.card_serial === card_serial);
+    if (isDup) {
+      return res.status(400).json({ error: 'This card serial is already registered.' });
+    }
+
+    const newCard = {
+      card_serial,
+      student_name,
+      student_id: student_nric,
+      class: studentClass,
+      balance: 0,
+      daily_limit: 50,
+      status: 'active'
+    };
+
+    existingCards.push(newCard);
+    user.cards_json = JSON.stringify(existingCards);
+
+    // Sync back first card if counts match
+    if (existingCards.length === 1) {
+      user.child = student_name;
+      user.childClass = studentClass;
+      user.studentId = student_nric;
+      user.card_serial = card_serial;
+      user.balance = 0;
+      user.daily_limit = 50;
+    }
+
+    saveDB(db);
+    return res.json({ success: true, user: hydrateUserNode(user) });
+  }
+
+  if (action === 'link-visa') {
+    const { email, cardholder_name, card_number, expiry_date, cvv } = req.body;
+    if (!email || !cardholder_name || !card_number || !expiry_date || !cvv) {
+      return res.status(400).json({ error: 'Please fill in all credit card details.' });
+    }
+
+    const cleanCard = card_number.replace(/[\s-]/g, '');
+    if (cleanCard.length < 13 || cleanCard.length > 19 || isNaN(Number(cleanCard))) {
+      return res.status(400).json({ error: 'Invalid card number format.' });
+    }
+
+    const user = db.users.find((u: any) => u.email.toLowerCase() === email.toLowerCase());
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const visaObj = {
+      cardholder_name,
+      card_number: '•••• ' + cleanCard.slice(-4),
+      expiry_date
+    };
+
+    user.visa_card_json = JSON.stringify(visaObj);
+    saveDB(db);
+
+    return res.json({ success: true, user: hydrateUserNode(user) });
   }
 
   if (action === 'user') {
@@ -127,25 +251,39 @@ app.all('/api.php', (req, res) => {
     const userReports = db.reports.filter((r: any) => r.reporterName === user.name);
     return res.json({
       success: true,
-      user,
+      user: hydrateUserNode(user),
       transactions: userTransactions,
       reports: userReports
     });
   }
 
   if (action === 'update-limit') {
-    const { email, limit } = req.body;
+    const { email, limit, card_serial } = req.body;
     const user = db.users.find((u: any) => u.email.toLowerCase() === email.toLowerCase());
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    user.daily_limit = parseFloat(limit) || 50;
+
+    const hydrated = hydrateUserNode(user);
+    const cards = hydrated.cards || [];
+
+    let syncLimit = parseFloat(limit) || 50;
+    for (const c of cards) {
+      if (c.card_serial === card_serial || (!card_serial && cards.length === 1)) {
+        c.daily_limit = syncLimit;
+        break;
+      }
+    }
+
+    user.cards_json = JSON.stringify(cards);
+    user.daily_limit = syncLimit;
+
     saveDB(db);
-    return res.json({ success: true, user });
+    return res.json({ success: true, user: hydrateUserNode(user) });
   }
 
   if (action === 'topup') {
-    const { email, amount, method } = req.body;
+    const { email, amount, method, card_serial } = req.body;
     const numAmount = parseFloat(amount);
     if (!email || isNaN(numAmount) || numAmount <= 0) {
       return res.status(400).json({ error: 'Invalid topup parameters' });
@@ -154,7 +292,27 @@ app.all('/api.php', (req, res) => {
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    user.balance += numAmount;
+
+    const hydrated = hydrateUserNode(user);
+    const cards = hydrated.cards || [];
+
+    if (cards.length === 0) {
+      return res.status(400).json({ error: 'Please register a student card before topping up.' });
+    }
+
+    let targetCardName = 'Child Wallet';
+    let newCardBalance = 0;
+    for (const c of cards) {
+      if (c.card_serial === card_serial || (!card_serial && cards.length > 0)) {
+        c.balance = (c.balance || 0) + numAmount;
+        newCardBalance = c.balance;
+        targetCardName = c.student_name;
+        break;
+      }
+    }
+
+    user.cards_json = JSON.stringify(cards);
+    user.balance = cards.length === 1 ? newCardBalance : (user.balance || 0) + numAmount;
     user.topupTotal = (user.topupTotal || 0) + numAmount;
     user.topupCount = (user.topupCount || 0) + 1;
 
@@ -165,21 +323,21 @@ app.all('/api.php', (req, res) => {
     const newTxn = {
       id: db.txnNextId++,
       userId: user.id,
-      description: `Top Up via ${method}`,
+      description: `Top Up RM ${numAmount.toFixed(2)} for ${targetCardName} via ${method}`,
       amount: numAmount,
       date: dateStr,
       type: 'topup' as const,
       icon: '⬆️',
       cat: 'topup',
-      title: `Top Up via ${method.split(' ')[0]}`,
-      sub: `${method.includes('Bank') ? method.substring(method.indexOf('(')+1, method.indexOf(')')) : 'Card'} · ${timeStr}`
+      title: `Top Up (${targetCardName})`,
+      sub: `${method.includes('Bank') || method.includes('FPX') ? 'Online Banking' : 'Card'} · ${timeStr}`
     };
 
     db.transactions.push(newTxn);
     saveDB(db);
 
     const userTransactions = db.transactions.filter((t: any) => t.userId === user.id);
-    return res.json({ success: true, user, transactions: userTransactions });
+    return res.json({ success: true, user: hydrateUserNode(user), transactions: userTransactions });
   }
 
   if (action === 'create-report') {

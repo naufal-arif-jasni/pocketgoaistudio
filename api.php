@@ -36,6 +36,44 @@ if (!$pdo) {
     sendError('Database connection failed. Please ensure MySQL is running and pocketgo_db is imported.', 500);
 }
 
+// Hydrate user record with multiple cards and Visa card information
+function hydrateUser($user) {
+    if (!$user) return null;
+    $user['balance'] = (float)$user['balance'];
+    $user['daily_limit'] = (float)$user['daily_limit'];
+    $user['topupTotal'] = (float)$user['topupTotal'];
+    $user['topupCount'] = (int)$user['topupCount'];
+
+    $cards = [];
+    if (!empty($user['cards_json'])) {
+        $cards = json_decode($user['cards_json'], true);
+    }
+    
+    // Backwards-compatible fallback if cards_json is empty
+    if (empty($cards) && (!empty($user['card_serial']) || !empty($user['studentId']))) {
+        $cards = [
+            [
+                'card_serial' => $user['card_serial'],
+                'student_name' => $user['child'],
+                'student_id' => $user['studentId'],
+                'class' => $user['childClass'],
+                'balance' => (float)$user['balance'],
+                'daily_limit' => (float)$user['daily_limit'],
+                'status' => $user['status'] ?? 'active'
+            ]
+        ];
+    }
+    $user['cards'] = $cards;
+
+    $visa = null;
+    if (!empty($user['visa_card_json'])) {
+        $visa = json_decode($user['visa_card_json'], true);
+    }
+    $user['visa_card'] = $visa;
+
+    return $user;
+}
+
 switch ($action) {
     
     // ── 1. LOGIN ──
@@ -64,11 +102,7 @@ switch ($action) {
             $stmt->execute([$email]);
             $user = $stmt->fetch();
             if ($user && $user['password'] === $password) {
-                // Format numbers before sending
-                $user['balance'] = (float)$user['balance'];
-                $user['daily_limit'] = (float)$user['daily_limit'];
-                $user['topupTotal'] = (float)$user['topupTotal'];
-                $user['topupCount'] = (int)$user['topupCount'];
+                $user = hydrateUser($user);
                 sendSuccess(['role' => 'parent', 'user' => $user]);
             }
             sendError('Invalid email or password.');
@@ -83,11 +117,8 @@ switch ($action) {
         $email = trim($input['email'] ?? '');
         $phone = trim($input['phone'] ?? '');
         $password = $input['password'] ?? '';
-        $child = trim($input['child'] ?? '');
-        $childClass = trim($input['childClass'] ?? '4 Amanah');
-        $studentId = trim($input['studentId'] ?? '');
 
-        if (empty($name) || empty($email) || empty($password) || empty($child)) {
+        if (empty($name) || empty($email) || empty($password)) {
             sendError('Missing required registration fields.');
         }
 
@@ -98,24 +129,15 @@ switch ($action) {
             sendError('Email address is already registered.');
         }
 
-        if (empty($studentId)) {
-            $studentId = 'PG-' . rand(10000, 99999);
-        }
-
-        $stmt = $pdo->prepare("INSERT INTO users (name, ic, email, phone, child, childClass, studentId, balance, daily_limit, status, password, role, topupTotal, topupCount) VALUES (?, ?, ?, ?, ?, ?, ?, 0.00, 50.00, 'active', ?, 'parent', 0.00, 0)");
-        $stmt->execute([$name, $ic, $email, $phone, $child, $childClass, $studentId, $password]);
+        $stmt = $pdo->prepare("INSERT INTO users (name, ic, email, phone, child, childClass, studentId, card_serial, balance, daily_limit, status, password, role, topupTotal, topupCount) VALUES (?, ?, ?, ?, '', '', '', '', 0.00, 50.00, 'active', ?, 'parent', 0.00, 0)");
+        $stmt->execute([$name, $ic, $email, $phone, $password]);
         
         $newUserId = $pdo->lastInsertId();
         
         // Fetch newly created user
         $stmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
         $stmt->execute([$newUserId]);
-        $user = $stmt->fetch();
-        
-        $user['balance'] = (float)$user['balance'];
-        $user['daily_limit'] = (float)$user['daily_limit'];
-        $user['topupTotal'] = (float)$user['topupTotal'];
-        $user['topupCount'] = (int)$user['topupCount'];
+        $user = hydrateUser($stmt->fetch());
 
         sendSuccess(['user' => $user]);
         break;
@@ -134,10 +156,7 @@ switch ($action) {
             sendError('User not found.');
         }
 
-        $user['balance'] = (float)$user['balance'];
-        $user['daily_limit'] = (float)$user['daily_limit'];
-        $user['topupTotal'] = (float)$user['topupTotal'];
-        $user['topupCount'] = (int)$user['topupCount'];
+        $user = hydrateUser($user);
 
         // Get user transactions
         $stmtTx = $pdo->prepare("SELECT * FROM transactions WHERE userId = ? ORDER BY date DESC");
@@ -169,10 +188,174 @@ switch ($action) {
         $input = getJsonInput();
         $email = trim($input['email'] ?? '');
         $limit = (float)($input['limit'] ?? 50.00);
+        $cardSerial = trim($input['card_serial'] ?? '');
 
         if (empty($email)) {
             sendError('Email required.');
         }
+
+        $stmt = $pdo->prepare("SELECT * FROM users WHERE LOWER(email) = LOWER(?)");
+        $stmt->execute([$email]);
+        $user = $stmt->fetch();
+        if (!$user) {
+            sendError('User not found.');
+        }
+
+        $cards = [];
+        if (!empty($user['cards_json'])) {
+            $cards = json_decode($user['cards_json'], true);
+        }
+        if (empty($cards) && (!empty($user['card_serial']) || !empty($user['studentId']))) {
+            $cards = [
+                [
+                    'card_serial' => $user['card_serial'],
+                    'student_name' => $user['child'],
+                    'student_id' => $user['studentId'],
+                    'class' => $user['childClass'],
+                    'balance' => (float)$user['balance'],
+                    'daily_limit' => (float)$user['daily_limit'],
+                    'status' => $user['status'] ?? 'active'
+                ]
+            ];
+        }
+
+        // Find the card and update limit
+        $found = false;
+        $syncLimit = $limit;
+        foreach ($cards as &$c) {
+            if ($c['card_serial'] === $cardSerial || (empty($cardSerial) && count($cards) === 1)) {
+                $c['daily_limit'] = $limit;
+                $found = true;
+                $syncLimit = $limit;
+                break;
+            }
+        }
+
+        // Save back
+        $stmtUp = $pdo->prepare("UPDATE users SET daily_limit = ?, cards_json = ? WHERE id = ?");
+        $stmtUp->execute([$syncLimit, json_encode($cards), $user['id']]);
+
+        // Get updated user details
+        $stmtGet = $pdo->prepare("SELECT * FROM users WHERE id = ?");
+        $stmtGet->execute([$user['id']]);
+        $updatedUser = hydrateUser($stmtGet->fetch());
+
+        sendSuccess(['user' => $updatedUser]);
+        break;
+
+    // ── 4b. REGISTER CARD ──
+    case 'register-card':
+        $input = getJsonInput();
+        $email = trim($input['email'] ?? '');
+        $cardSerial = trim($input['card_serial'] ?? '');
+        $studentName = trim($input['student_name'] ?? '');
+        $studentNric = trim($input['student_nric'] ?? '');
+        $class = trim($input['class'] ?? '');
+
+        if (empty($email) || empty($cardSerial) || empty($studentName) || empty($studentNric) || empty($class)) {
+            sendError('Please fill in all card details.');
+        }
+
+        if (strlen($cardSerial) !== 10 || !is_numeric($cardSerial)) {
+            sendError('Card Serial No. must be exactly 10 digits.');
+        }
+
+        $stmt = $pdo->prepare("SELECT * FROM users WHERE LOWER(email) = LOWER(?)");
+        $stmt->execute([$email]);
+        $user = $stmt->fetch();
+        if (!$user) {
+            sendError('User not found.');
+        }
+
+        // Parse existing cards
+        $cards = [];
+        if (!empty($user['cards_json'])) {
+            $cards = json_decode($user['cards_json'], true);
+        }
+        
+        // Backwards-compatible migration if cards list is empty
+        if (empty($cards) && (!empty($user['card_serial']) || !empty($user['studentId']))) {
+            $cards = [
+                [
+                    'card_serial' => $user['card_serial'],
+                    'student_name' => $user['child'],
+                    'student_id' => $user['studentId'],
+                    'class' => $user['childClass'],
+                    'balance' => (float)$user['balance'],
+                    'daily_limit' => (float)$user['daily_limit'],
+                    'status' => $user['status'] ?? 'active'
+                ]
+            ];
+        }
+
+        // Check if card serial is already registered
+        foreach ($cards as $c) {
+            if ($c['card_serial'] === $cardSerial) {
+                sendError('This card serial is already registered.');
+            }
+        }
+
+        // Create new card
+        $newCard = [
+            'card_serial' => $cardSerial,
+            'student_name' => $studentName,
+            'student_id' => $studentNric,
+            'class' => $class,
+            'balance' => 0.00,
+            'daily_limit' => 50.00,
+            'status' => 'active'
+        ];
+        $cards[] = $newCard;
+
+        // If this is the FIRST card, we sync it to the main columns
+        $childName = $user['child'];
+        $childCls = $user['childClass'];
+        $sid = $user['studentId'];
+        $serial = $user['card_serial'];
+        $bal = (float)$user['balance'];
+        $limitVal = (float)$user['daily_limit'];
+
+        if (count($cards) === 1) {
+            $childName = $studentName;
+            $childCls = $class;
+            $sid = $studentNric;
+            $serial = $cardSerial;
+            $bal = 0.00;
+            $limitVal = 50.00;
+        }
+
+        $stmtUp = $pdo->prepare("UPDATE users SET child = ?, childClass = ?, studentId = ?, card_serial = ?, balance = ?, daily_limit = ?, cards_json = ? WHERE id = ?");
+        $stmtUp->execute([$childName, $childCls, $sid, $serial, $bal, $limitVal, json_encode($cards), $user['id']]);
+
+        // Get updated user details
+        $stmtGet = $pdo->prepare("SELECT * FROM users WHERE id = ?");
+        $stmtGet->execute([$user['id']]);
+        $updatedUser = hydrateUser($stmtGet->fetch());
+
+        sendSuccess(['user' => $updatedUser]);
+        break;
+
+    // ── 4c. LINK VISA CARD ──
+    case 'link-visa':
+        $input = getJsonInput();
+        $email = trim($input['email'] ?? '');
+        $cardholder = trim($input['cardholder_name'] ?? '');
+        $cardNum = trim($input['card_number'] ?? '');
+        $expiry = trim($input['expiry_date'] ?? '');
+        $cvv = trim($input['cvv'] ?? '');
+
+        if (empty($email) || empty($cardholder) || empty($cardNum) || empty($expiry) || empty($cvv)) {
+            sendError('Please fill in all credit card details.');
+        }
+
+        // Clean card number (e.g. spaces/dashes) and check length
+        $cleanCard = str_replace([' ', '-'], '', $cardNum);
+        if (strlen($cleanCard) < 13 || strlen($cleanCard) > 19 || !is_numeric($cleanCard)) {
+            sendError('Invalid card number format.');
+        }
+
+        // Mask the card number to keep last 4 digits (e.g. •••• 4321)
+        $maskedCard = '•••• ' . substr($cleanCard, -4);
 
         $stmt = $pdo->prepare("SELECT id FROM users WHERE LOWER(email) = LOWER(?)");
         $stmt->execute([$email]);
@@ -181,17 +364,19 @@ switch ($action) {
             sendError('User not found.');
         }
 
-        $stmtUp = $pdo->prepare("UPDATE users SET daily_limit = ? WHERE id = ?");
-        $stmtUp->execute([$limit, $user['id']]);
+        $visaObj = [
+            'cardholder_name' => $cardholder,
+            'card_number' => $maskedCard,
+            'expiry_date' => $expiry
+        ];
 
-        // Get updated user details
+        $stmtUp = $pdo->prepare("UPDATE users SET visa_card_json = ? WHERE id = ?");
+        $stmtUp->execute([json_encode($visaObj), $user['id']]);
+
+        // Fetch and return hydrated user
         $stmtGet = $pdo->prepare("SELECT * FROM users WHERE id = ?");
         $stmtGet->execute([$user['id']]);
-        $updatedUser = $stmtGet->fetch();
-        $updatedUser['balance'] = (float)$updatedUser['balance'];
-        $updatedUser['daily_limit'] = (float)$updatedUser['daily_limit'];
-        $updatedUser['topupTotal'] = (float)$updatedUser['topupTotal'];
-        $updatedUser['topupCount'] = (int)$updatedUser['topupCount'];
+        $updatedUser = hydrateUser($stmtGet->fetch());
 
         sendSuccess(['user' => $updatedUser]);
         break;
@@ -202,6 +387,7 @@ switch ($action) {
         $email = trim($input['email'] ?? '');
         $amount = (float)($input['amount'] ?? 0);
         $method = trim($input['method'] ?? 'FPX');
+        $cardSerial = trim($input['card_serial'] ?? '');
 
         if (empty($email) || $amount <= 0) {
             sendError('Invalid parameters.');
@@ -214,20 +400,58 @@ switch ($action) {
             sendError('User not found.');
         }
 
+        $cards = [];
+        if (!empty($user['cards_json'])) {
+            $cards = json_decode($user['cards_json'], true);
+        }
+        if (empty($cards) && (!empty($user['card_serial']) || !empty($user['studentId']))) {
+            $cards = [
+                [
+                    'card_serial' => $user['card_serial'],
+                    'student_name' => $user['child'],
+                    'student_id' => $user['studentId'],
+                    'class' => $user['childClass'],
+                    'balance' => (float)$user['balance'],
+                    'daily_limit' => (float)$user['daily_limit'],
+                    'status' => $user['status'] ?? 'active'
+                ]
+            ];
+        }
+
+        if (empty($cards)) {
+            sendError('Please register a student card before topping up.');
+        }
+
+        // Add to targeted card's balance
+        $found = false;
+        $targetCardName = 'Child Wallet';
+        $newCardBalance = 0;
+        foreach ($cards as &$c) {
+            if ($c['card_serial'] === $cardSerial || (empty($cardSerial) && count($cards) > 0)) {
+                $c['balance'] = (float)$c['balance'] + $amount;
+                $newCardBalance = $c['balance'];
+                $targetCardName = $c['student_name'];
+                $found = true;
+                break;
+            }
+        }
+
         $newBalance = (float)$user['balance'] + $amount;
         $newTopupTotal = (float)$user['topupTotal'] + $amount;
         $newTopupCount = (int)$user['topupCount'] + 1;
 
-        // Update user balances
-        $stmtUp = $pdo->prepare("UPDATE users SET balance = ?, topupTotal = ?, topupCount = ? WHERE id = ?");
-        $stmtUp->execute([$newBalance, $newTopupTotal, $newTopupCount, $user['id']]);
+        // Sync main column for single-card backwards-compatibility
+        $syncBalance = (count($cards) === 1) ? $newCardBalance : $newBalance;
+
+        $stmtUp = $pdo->prepare("UPDATE users SET balance = ?, topupTotal = ?, topupCount = ?, cards_json = ? WHERE id = ?");
+        $stmtUp->execute([$syncBalance, $newTopupTotal, $newTopupCount, json_encode($cards), $user['id']]);
 
         // Create transaction entry
         $dateStr = date('Y-m-d H:i');
         $timeStr = date('g:i A');
         
-        $desc = "Top Up via " . $method;
-        $title = "Top Up via " . explode(' ', $method)[0];
+        $desc = "Top Up RM " . number_format($amount, 2) . " for " . $targetCardName . " via " . $method;
+        $title = "Top Up (" . $targetCardName . ")";
         $sub = (strpos($method, 'Bank') !== false || strpos($method, 'Maybank') !== false || strpos($method, 'CIMB') !== false) 
             ? "Online Banking · " . $timeStr 
             : "Card · " . $timeStr;
@@ -238,11 +462,7 @@ switch ($action) {
         // Get updated user data
         $stmtGet = $pdo->prepare("SELECT * FROM users WHERE id = ?");
         $stmtGet->execute([$user['id']]);
-        $updatedUser = $stmtGet->fetch();
-        $updatedUser['balance'] = (float)$updatedUser['balance'];
-        $updatedUser['daily_limit'] = (float)$updatedUser['daily_limit'];
-        $updatedUser['topupTotal'] = (float)$updatedUser['topupTotal'];
-        $updatedUser['topupCount'] = (int)$updatedUser['topupCount'];
+        $updatedUser = hydrateUser($stmtGet->fetch());
 
         // Get user transactions
         $stmtTList = $pdo->prepare("SELECT * FROM transactions WHERE userId = ? ORDER BY date DESC");

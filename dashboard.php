@@ -42,7 +42,7 @@ require_once 'auth.php';
       <div class="wc-balance">RM <span id="dash-balance">0.00</span></div>
       <div class="wc-child">Linked to: <strong id="dash-child-name">—</strong> (<span id="dash-child-class">—</span>)</div>
       <div class="wc-actions">
-        <button class="wc-btn" onclick="location.href='topup.php'"><span class="wc-icon">➕</span>Top Up Card</button>
+        <button class="wc-btn" onclick="goTopUp()"><span class="wc-icon">➕</span>Top Up Card</button>
         <button class="wc-btn" onclick="location.href='card.php'"><span class="wc-icon">⚙️</span>Card Settings</button>
       </div>
     </div>
@@ -86,7 +86,7 @@ require_once 'auth.php';
   <!-- Parent Bottom Navigation -->
   <div class="bottom-nav-parent">
     <div class="nav-item active" data-page="dashboard" onclick="location.href='dashboard.php'"><div class="ni-icon">🏠</div><div class="ni-label">Home</div></div>
-    <div class="nav-item" data-page="topup" onclick="location.href='topup.php'"><div class="ni-icon">➕</div><div class="ni-label">Top Up</div></div>
+    <div class="nav-item" data-page="topup" onclick="goTopUp()"><div class="ni-icon">➕</div><div class="ni-label">Top Up</div></div>
     <div class="nav-item" data-page="history" onclick="location.href='history.php'"><div class="ni-icon">📊</div><div class="ni-label">History</div></div>
     <div class="nav-item" data-page="card" onclick="location.href='card.php'"><div class="ni-icon">💳</div><div class="ni-label">My Card</div></div>
     <div class="nav-item" data-page="reports" onclick="location.href='reports.php'"><div class="ni-icon">📞</div><div class="ni-label">Reports</div></div>

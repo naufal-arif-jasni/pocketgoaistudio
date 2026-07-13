@@ -23,58 +23,77 @@ require_once 'auth.php';
   </div>
 
   <div class="scroll-area pb">
-    <!-- Physical NFC Card Mock -->
-    <div class="physical-card">
-      <div class="pc-logo">Pocket<span>Go</span> Student</div>
-      <div class="pc-chip"></div>
-      <div class="pc-number">4012 • 4810 • 9284 • 0124</div>
-      <div class="pc-row">
-        <div><div class="pc-label">Student</div><div class="pc-val" id="card-child">—</div></div>
-        <div><div class="pc-label">Class</div><div class="pc-val" id="card-class">—</div></div>
-        <div><div class="pc-label">Status</div><div class="pc-val" style="color:#FFD700;">ACTIVE</div></div>
-      </div>
-      <div style="font-size:.6rem;color:rgba(255,255,255,.5);margin-top:14px;" id="card-id">ID: —</div>
+    <!-- Empty State: Show when no card registered -->
+    <div class="empty-card-state" id="empty-card-container" style="display: none;">
+      <div class="empty-icon-circle">💳</div>
+      <h3>No Linked Student Card</h3>
+      <p>Link your child's physical school student NFC card to begin managing their e-wallet balance, setting daily spending limits, and monitoring canteen transactions.</p>
+      <button class="btn btn-primary" onclick="showModal('modal-register-card')" style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 30px; font-weight: 600; margin-top: 10px;">
+        <span>➕</span> Register Student Card
+      </button>
     </div>
 
-    <!-- Main Card Settings -->
-    <div class="white-card" style="padding:16px;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <h4 style="font-size:.92rem;font-weight:700;">💳 Card NFC Operations</h4>
-        <span class="tag tag-green">Secured</span>
-      </div>
-      <div class="card-actions">
-        <button class="card-action-btn" onclick="toast('Card locking requires physical school terminal sync')">
-          <div class="ca-icon">🔒</div>
-          <h4>Lock Card</h4>
-          <p>Temporarily disable</p>
-        </button>
-        <button class="card-action-btn" onclick="toast('Please report lost cards on the Reports page')">
-          <div class="ca-icon">🚨</div>
-          <h4>Report Lost</h4>
-          <p>Card replacement</p>
-        </button>
-      </div>
-    </div>
+    <!-- Active Card: Show when card registered -->
+    <div id="active-card-container" style="display: none;">
+      <!-- Horizontal Carousel Container -->
+      <div class="carousel-outer">
+        <!-- Navigation Arrow Buttons -->
+        <button class="carousel-arrow prev" id="carousel-prev-btn" onclick="navigateCarousel(-1)">◀</button>
+        <button class="carousel-arrow next" id="carousel-next-btn" onclick="navigateCarousel(1)">▶</button>
 
-    <!-- Daily Spend Limit Manager -->
-    <div class="white-card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <h4 style="font-size:.92rem;font-weight:700;">🛡️ Daily Spending Limit</h4>
-        <button class="btn btn-sm btn-outline" style="padding:6px 14px;" onclick="showModal('modal-limit')">Change Limit</button>
+        <div class="carousel-container" id="carousel-scroller">
+          <div class="carousel-track" id="card-carousel-track">
+            <!-- Dynamic Children Cards & Plus-Card Slide -->
+          </div>
+        </div>
+        <div class="carousel-dots" id="carousel-dots-container">
+          <!-- Dynamic Dot Indicators -->
+        </div>
       </div>
-      
-      <p style="font-size:.8rem;color:#666;margin-bottom:14px;">Controls the maximum amount your child can spend at school canteen and bookshop per day.</p>
-      
-      <div class="limit-bar">
-        <div class="limit-fill" id="card-limit-fill" style="width: 0%;"></div>
-      </div>
-      
-      <div style="display:flex;justify-content:space-between;font-size:.8rem;color:#1a1a1a;font-weight:600;margin-top:10px;">
-        <span>Spent: RM <span id="card-spent-val">0.00</span></span>
-        <span>Daily Limit: RM <span id="card-limit-val">0.00</span></span>
-      </div>
-      <div style="font-size:.78rem;color:#1a9e5c;font-weight:600;margin-top:4px;text-align:right;">
-        Remaining: RM <span id="card-rem-val">0.00</span>
+
+      <!-- Card Settings Wrapper (dynamic visibility based on selected slide) -->
+      <div id="card-settings-details">
+        <!-- Main Card Settings -->
+        <div class="white-card" style="padding:16px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <h4 style="font-size:.92rem;font-weight:700;">💳 Card NFC Operations</h4>
+            <span class="tag tag-green">Secured</span>
+          </div>
+          <div class="card-actions">
+            <button class="card-action-btn" onclick="toast('Card locking requires physical school terminal sync')">
+              <div class="ca-icon">🔒</div>
+              <h4>Lock Card</h4>
+              <p>Temporarily disable</p>
+            </button>
+            <button class="card-action-btn" onclick="toast('Please report lost cards on the Reports page')">
+              <div class="ca-icon">🚨</div>
+              <h4>Report Lost</h4>
+              <p>Card replacement</p>
+            </button>
+          </div>
+        </div>
+
+        <!-- Daily Spend Limit Manager -->
+        <div class="white-card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <h4 style="font-size:.92rem;font-weight:700;">🛡️ Daily Spending Limit</h4>
+            <button class="btn btn-sm btn-outline" style="padding:6px 14px;" onclick="showModal('modal-limit')">Change Limit</button>
+          </div>
+          
+          <p style="font-size:.8rem;color:#666;margin-bottom:14px;">Controls the maximum amount your child can spend at school canteen and bookshop per day.</p>
+          
+          <div class="limit-bar">
+            <div class="limit-fill" id="card-limit-fill" style="width: 0%;"></div>
+          </div>
+          
+          <div style="display:flex;justify-content:space-between;font-size:.8rem;color:#1a1a1a;font-weight:600;margin-top:10px;">
+            <span>Spent: RM <span id="card-spent-val">0.00</span></span>
+            <span>Daily Limit: RM <span id="card-limit-val">0.00</span></span>
+          </div>
+          <div style="font-size:.78rem;color:#1a9e5c;font-weight:600;margin-top:4px;text-align:right;">
+            Remaining: RM <span id="card-rem-val">0.00</span>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -111,6 +130,37 @@ require_once 'auth.php';
     </div>
 
     <button class="btn btn-primary btn-full" onclick="saveLimit()">Save Limit Configuration</button>
+  </div>
+</div>
+
+<!-- MODAL: REGISTER STUDENT CARD -->
+<div class="modal-overlay" id="modal-register-card" onclick="closeModal('modal-register-card')">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">💳 Link Student NFC Card</div>
+    <p style="font-size:.82rem;color:#666;margin-bottom:18px;">Enter the physical details of your child's PocketGo NFC card to synchronize with the school terminal.</p>
+    
+    <div class="form-group" style="margin-bottom:14px;">
+      <label>10-digit Card Serial No.</label>
+      <input type="text" id="reg-card-serial" maxlength="10" placeholder="e.g. 1029483756">
+    </div>
+
+    <div class="form-group" style="margin-bottom:14px;">
+      <label>Student Full Name</label>
+      <input type="text" id="reg-student-name" placeholder="e.g. Muhammad Faris">
+    </div>
+
+    <div class="form-group" style="margin-bottom:14px;">
+      <label>Student NRIC (for ID)</label>
+      <input type="text" id="reg-student-nric" placeholder="e.g. 120512-10-1234">
+    </div>
+
+    <div class="form-group" style="margin-bottom:20px;">
+      <label>Class</label>
+      <input type="text" id="reg-student-class" placeholder="e.g. 4 Amanah">
+    </div>
+
+    <button class="btn btn-primary btn-full" onclick="registerStudentCard()">Register & Link Card</button>
   </div>
 </div>
 

@@ -56,23 +56,7 @@ require_once 'db_conn.php';
           </div>
         </div>
 
-        <div class="child-box">
-          <div class="child-title">🔗 LINK STUDENT CARD</div>
-          <div class="form-group">
-            <label>Child's Full Name</label>
-            <input type="text" id="reg-child" placeholder="Muhammad Faris">
-          </div>
-          <div class="form-row">
-            <div class="form-group" style="margin-bottom:0;">
-              <label>Class</label>
-              <input type="text" id="reg-class" placeholder="4 Amanah">
-            </div>
-            <div class="form-group" style="margin-bottom:0;">
-              <label>Student Card ID</label>
-              <input type="text" id="reg-sid" placeholder="PG-40124">
-            </div>
-          </div>
-        </div>
+        <!-- Link student card section has been moved to the Card Section in parent portal -->
 
         <button class="btn btn-primary btn-full" style="margin-top:10px;" onclick="doRegister()">Create Parenting Account</button>
 

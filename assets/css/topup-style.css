@@ -38,3 +38,11 @@
 .pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid #e0e0e0;transition:all .2s;}
 .pin-dot.filled{background:#C8102E;border-color:#C8102E;}
 .payment-summary{background:#f8f8f8;border-radius:12px;padding:14px;margin:10px 0;border-left:4px solid #C8102E;}
+
+.pm-add {
+  margin-left: auto;
+  font-size: 1.2rem;
+  color: #C8102E;
+  font-weight: bold;
+}
+

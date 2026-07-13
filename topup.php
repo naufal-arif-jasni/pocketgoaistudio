@@ -23,52 +23,61 @@ require_once 'auth.php';
   </div>
 
   <div class="scroll-area pb">
-    <div class="white-card">
-      <div style="font-size:.8rem;color:#666;font-weight:600;">TOPPING UP WALLET FOR</div>
-      <h3 style="font-size:1.25rem;font-weight:800;color:#C8102E;margin-top:2px;" id="tu-child">—</h3>
+    <!-- Unlinked Block State: Hidden by default, shown in topup.js if 0 cards -->
+    <div class="empty-card-state" id="tu-no-card-block" style="display: none; margin: 20px 16px;">
+      <div class="empty-icon-circle">🔒</div>
+      <h3>Top Up Locked</h3>
+      <p>You must link at least one PocketGo school student NFC card to your account before you can perform any wallet top-up operations.</p>
+      <button class="btn btn-primary" onclick="location.href='card.php'" style="display: inline-flex; align-items: center; gap: 8px; padding: 12px 24px; border-radius: 30px; font-weight: 600; margin-top: 10px;">
+        Go to Card Settings
+      </button>
     </div>
 
-    <div class="white-card">
-      <h4 style="font-size:.9rem;font-weight:700;margin-bottom:12px;">1. Select Amount (RM)</h4>
-      <div class="amount-grid">
-        <button class="amount-btn active" onclick="selectAmount(10, this)">10</button>
-        <button class="amount-btn" onclick="selectAmount(20, this)">20</button>
-        <button class="amount-btn" onclick="selectAmount(50, this)">50</button>
-        <button class="amount-btn" onclick="selectAmount(100, this)">100</button>
-        <button class="amount-btn" onclick="selectAmount(200, this)">200</button>
-        <button class="amount-btn" onclick="selectAmount(500, this)">500</button>
+    <div id="tu-active-container">
+      <div class="white-card">
+        <div style="font-size:.8rem;color:#666;font-weight:600;margin-bottom:8px;">TOPPING UP WALLET FOR</div>
+        <select id="tu-card-selector" style="width: 100%; padding: 12px; border-radius: 10px; border: 1.5px solid #e0e0e0; font-weight: 600; font-family: 'Poppins', sans-serif; background: #fff;">
+          <!-- Options loaded dynamically -->
+        </select>
       </div>
-      <div style="margin-top:14px;">
-        <label>Or enter custom amount (RM)</label>
-        <input type="number" id="tu-custom-amount" placeholder="0.00" oninput="selectCustomAmount(this.value)">
-      </div>
-    </div>
 
-    <div class="white-card">
-      <h4 style="font-size:.9rem;font-weight:700;margin-bottom:14px;">2. Payment Method</h4>
-      
-      <!-- FPX / External Gateways -->
-      <div class="pay-method active" id="pm-fpx" onclick="selectMethod('fpx', 'pm-fpx')">
-        <div class="pm-icon">🏦</div>
-        <div class="pm-info">
-          <h4>FPX / Cards / E-Wallets</h4>
-          <p>Pay instantly using your preferred online payment gateways</p>
+      <div class="white-card">
+        <h4 style="font-size:.9rem;font-weight:700;margin-bottom:12px;">1. Select Amount (RM)</h4>
+        <div class="amount-grid">
+          <button class="amount-btn active" onclick="selectAmount(10, this)">10</button>
+          <button class="amount-btn" onclick="selectAmount(20, this)">20</button>
+          <button class="amount-btn" onclick="selectAmount(50, this)">50</button>
+          <button class="amount-btn" onclick="selectAmount(100, this)">100</button>
+          <button class="amount-btn" onclick="selectAmount(200, this)">200</button>
+          <button class="amount-btn" onclick="selectAmount(500, this)">500</button>
         </div>
-        <div class="pm-check">✓</div>
-      </div>
-
-      <!-- Linked Saved Card -->
-      <div class="pay-method" id="pm-saved" onclick="selectMethod('saved', 'pm-saved')">
-        <div class="pm-icon">💳</div>
-        <div class="pm-info">
-          <h4>Linked Visa Card (•••• 4321)</h4>
-          <p>Instant authorized 1-click top up using security PIN</p>
+        <div style="margin-top:14px;">
+          <label>Or enter custom amount (RM)</label>
+          <input type="number" id="tu-custom-amount" placeholder="0.00" oninput="selectCustomAmount(this.value)">
         </div>
-        <div class="pm-check">✓</div>
       </div>
-    </div>
 
-    <button class="btn btn-primary btn-full" style="margin-top:10px;" onclick="doTopUp()">Proceed to Payment</button>
+      <div class="white-card">
+        <h4 style="font-size:.9rem;font-weight:700;margin-bottom:14px;">2. Payment Method</h4>
+        
+        <!-- FPX / External Gateways -->
+        <div class="pay-method active" id="pm-fpx" onclick="selectMethod('fpx', 'pm-fpx')">
+          <div class="pm-icon">🏦</div>
+          <div class="pm-info">
+            <h4>FPX / Cards / E-Wallets</h4>
+            <p>Pay instantly using your preferred online payment gateways</p>
+          </div>
+          <div class="pm-check">✓</div>
+        </div>
+
+        <!-- Saved or Link Credit Card Container -->
+        <div id="dynamic-visa-method">
+          <!-- Populated by topup.js -->
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-full" style="margin-top:10px;" onclick="doTopUp()">Proceed to Payment</button>
+    </div>
   </div>
 
   <!-- Parent Bottom Navigation -->
@@ -202,6 +211,38 @@ require_once 'auth.php';
     </div>
     
     <div style="text-align:center;font-size:.78rem;color:#999;margin-top:14px;">Demo PIN: <strong>123456</strong></div>
+  </div>
+</div>
+
+<!-- MODAL: LINK VISA/MASTER CARD -->
+<div class="modal-overlay" id="modal-link-visa" onclick="closeModal('modal-link-visa')">
+  <div class="modal-sheet" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <div class="modal-title">💳 Link Credit / Debit Card</div>
+    <p style="font-size:.82rem;color:#666;margin-bottom:18px;">Enter your Visa or MasterCard details to link it securely for e-wallet top-ups. This information is stored in our secure database.</p>
+    
+    <div class="form-group" style="margin-bottom:14px;">
+      <label>Cardholder Name</label>
+      <input type="text" id="visa-holder-name" placeholder="e.g. Ahmad Abdullah">
+    </div>
+
+    <div class="form-group" style="margin-bottom:14px;">
+      <label>Card Number</label>
+      <input type="text" id="visa-card-number" placeholder="e.g. 4111 2222 3333 4444" maxlength="19" oninput="formatCardNumber(this)">
+    </div>
+
+    <div class="form-row" style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;">
+      <div class="form-group">
+        <label>Expiry Date</label>
+        <input type="text" id="visa-expiry" placeholder="MM/YY" maxlength="5" oninput="formatExpiry(this)">
+      </div>
+      <div class="form-group">
+        <label>CVV</label>
+        <input type="password" id="visa-cvv" placeholder="•••" maxlength="3">
+      </div>
+    </div>
+
+    <button class="btn btn-primary btn-full" onclick="saveVisaCard()">Link & Save Card</button>
   </div>
 </div>
 
