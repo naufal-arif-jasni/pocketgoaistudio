@@ -64,7 +64,8 @@ function renderCardPage() {
   const scroller = document.getElementById('carousel-scroller');
   if (scroller) {
     scroller.onscroll = () => {
-      const cardWidth = 306; // 290px width + 16px gap
+      const firstCard = scroller.querySelector('.physical-card, .add-card-slide');
+      const cardWidth = firstCard ? firstCard.offsetWidth + 16 : 306;
       const scrollLeft = scroller.scrollLeft;
       const index = Math.round(scrollLeft / cardWidth);
       if (index !== activeCardIndex && index < totalSlides) {
@@ -150,7 +151,8 @@ window.navigateCarousel = navigateCarousel;
 function scrollToCard(index) {
   const scroller = document.getElementById('carousel-scroller');
   if (!scroller) return;
-  const cardWidth = 306; // 290px + 16px gap
+  const firstCard = scroller.querySelector('.physical-card, .add-card-slide');
+  const cardWidth = firstCard ? firstCard.offsetWidth + 16 : 306;
   scroller.scrollTo({
     left: index * cardWidth,
     behavior: 'smooth'
