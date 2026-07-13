@@ -1,0 +1,40 @@
+@import "common-style.css";
+
+.amount-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:14px;}
+.amount-btn{padding:13px 8px;border-radius:10px;border:1.5px solid #e0e0e0;background:#fff;font-weight:700;font-size:.9rem;cursor:pointer;transition:all .2s;font-family:'Poppins',sans-serif;}
+.amount-btn:hover,.amount-btn.active{border-color:#C8102E;background:#f5e6e9;color:#C8102E;}
+.pay-method{background:#fff;border-radius:10px;padding:16px;border:1.5px solid #e0e0e0;cursor:pointer;display:flex;align-items:center;gap:14px;transition:all .2s;margin-bottom:10px;}
+.pay-method:hover,.pay-method.active{border-color:#C8102E;background:#f5e6e9;}
+.pm-icon{font-size:1.8rem;}
+.pm-info h4{font-size:.9rem;font-weight:700;}
+.pm-info p{font-size:.76rem;color:#666;}
+.pm-check{margin-left:auto;width:22px;height:22px;border-radius:50%;border:2px solid #e0e0e0;display:flex;align-items:center;justify-content:center;font-size:.7rem;color:#fff;}
+.pay-method.active .pm-check{background:#C8102E;border-color:#C8102E;}
+.gw-tab{padding:8px 14px;border-radius:50px;border:1.5px solid #e0e0e0;background:#fff;font-size:.78rem;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .2s;font-family:'Poppins',sans-serif;}
+.gw-tab.active{background:#C8102E;color:#fff;border-color:#C8102E;}
+.gateway-badge{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
+.gw-pill{display:inline-block;padding:3px 8px;border-radius:50px;font-size:.68rem;font-weight:700;}
+.ew-method{background:#fff;border-radius:10px;padding:14px;border:1.5px solid #e0e0e0;cursor:pointer;display:flex;align-items:center;gap:12px;transition:all .2s;margin-bottom:10px;}
+.ew-method:hover,.ew-method.active{border-color:#C8102E;background:#f5e6e9;}
+.ew-logo{width:42px;height:42px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.ew-info{flex:1;}
+.ew-name{font-size:.9rem;font-weight:700;}
+.ew-sub{font-size:.72rem;color:#666;}
+.ew-check{width:22px;height:22px;border-radius:50%;border:2px solid #e0e0e0;display:flex;align-items:center;justify-content:center;font-size:.7rem;color:#fff;flex-shrink:0;}
+.active-check{background:#C8102E;border-color:#C8102E;}
+.fpx-info{background:#fffbe6;border:1px solid #FFD700;border-radius:8px;padding:10px 12px;font-size:.78rem;color:#7a5c00;margin-bottom:12px;}
+.bank-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;}
+.bank-btn{padding:12px 8px;border-radius:10px;border:1.5px solid #e0e0e0;background:#fff;font-size:.78rem;font-weight:600;cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif;display:flex;align-items:center;gap:6px;}
+.bank-btn:hover,.bank-btn.active{border-color:#C8102E;background:#f5e6e9;color:#C8102E;}
+.bank-logo{width:22px;height:22px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:700;color:#fff;flex-shrink:0;}
+.card-preview{background:linear-gradient(135deg,#C8102E,#9e0c23);border-radius:14px;padding:20px;color:#fff;margin-bottom:18px;}
+.cp-num{font-size:1.1rem;letter-spacing:3px;font-weight:600;margin-bottom:14px;}
+.cp-row{display:flex;justify-content:space-between;font-size:.8rem;}
+.cp-label{color:rgba(255,255,255,.65);font-size:.68rem;}
+.pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0;}
+.pin-btn{padding:14px;border-radius:10px;border:1.5px solid #e0e0e0;background:#fff;font-size:1.1rem;font-weight:700;cursor:pointer;transition:all .2s;font-family:'Poppins',sans-serif;}
+.pin-btn:hover{background:#f5e6e9;border-color:#C8102E;}
+.pin-display{display:flex;gap:12px;justify-content:center;margin-bottom:14px;}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:2px solid #e0e0e0;transition:all .2s;}
+.pin-dot.filled{background:#C8102E;border-color:#C8102E;}
+.payment-summary{background:#f8f8f8;border-radius:12px;padding:14px;margin:10px 0;border-left:4px solid #C8102E;}

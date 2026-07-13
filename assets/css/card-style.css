@@ -1,0 +1,21 @@
+@import "common-style.css";
+
+.physical-card{background:linear-gradient(135deg,#C8102E,#7a0a1c);border-radius:20px;padding:28px 24px;color:#fff;margin-bottom:20px;box-shadow:0 12px 40px rgba(200,16,46,.35);position:relative;overflow:hidden;}
+.physical-card::before{content:'';position:absolute;bottom:-30px;right:-30px;width:130px;height:130px;border-radius:50%;background:rgba(255,215,0,.2);}
+.pc-logo{font-family:'Poppins',sans-serif;font-weight:800;font-size:1.1rem;margin-bottom:22px;}
+.pc-logo span{color:#FFD700;}
+.pc-chip{width:36px;height:26px;background:#FFD700;border-radius:4px;margin-bottom:18px;opacity:.9;}
+.pc-number{font-size:1.05rem;letter-spacing:4px;font-weight:600;margin-bottom:14px;}
+.pc-row{display:flex;justify-content:space-between;}
+.pc-label{font-size:.62rem;color:rgba(255,255,255,.6);text-transform:uppercase;letter-spacing:1px;}
+.pc-val{font-size:.88rem;font-weight:600;}
+.card-actions{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;}
+.card-action-btn{padding:14px;border-radius:10px;border:1.5px solid #e0e0e0;background:#fff;cursor:pointer;text-align:center;transition:all .2s;font-family:'Poppins',sans-serif;}
+.card-action-btn:hover{border-color:#C8102E;background:#f5e6e9;}
+.ca-icon{font-size:1.5rem;margin-bottom:5px;}
+.card-action-btn h4{font-size:.82rem;font-weight:700;}
+.card-action-btn p{font-size:.73rem;color:#666;}
+.limit-bar{height:8px;background:#f2f2f2;border-radius:50px;overflow:hidden;margin:8px 0 6px;}
+.limit-fill{height:100%;background:#C8102E;border-radius:50px;}
+.amount-btn{padding:13px 8px;border-radius:10px;border:1.5px solid #e0e0e0;background:#fff;font-weight:700;font-size:.9rem;cursor:pointer;transition:all .2s;font-family:'Poppins',sans-serif;}
+.amount-btn:hover,.amount-btn.active{border-color:#C8102E;background:#f5e6e9;color:#C8102E;}
