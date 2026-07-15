@@ -6,6 +6,7 @@ require_once 'db_conn.php';
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="icon" type="image" href="images/logo.png">
   <title>PocketGo – Smart School E-Wallet</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/css/index-style.css">
@@ -15,6 +16,7 @@ require_once 'db_conn.php';
 <div class="page page-active" id="page-landing">
   <nav class="landing-nav">
     <div class="logo">Pocket<span>Go</span></div>
+    <button class="btn btn-primary btn-sm" onclick="location.href='register.php'">Register</button>
     <button class="btn btn-primary btn-sm" onclick="location.href='login.php'">Login</button>
   </nav>
 
@@ -30,12 +32,12 @@ require_once 'db_conn.php';
       <div class="hero-mockup">
         <div class="mockup-balance">
           <div class="lbl">Parent Balance</div>
-          <div class="amt">RM 120.50</div>
+          <div class="amt">RM ***.**</div>
         </div>
         <div class="mockup-card">
           <div>
             <div class="cn" style="font-size:.7rem;color:#FFD700;">PocketGo Card</div>
-            <div class="cn2">Muhammad Faris</div>
+            <div class="cn2">**** *****</div>
           </div>
           <div class="chip"></div>
         </div>
